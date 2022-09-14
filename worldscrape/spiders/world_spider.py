@@ -10,7 +10,6 @@ class PostsSpider(scrapy.Spider):
     def parse(self, response):
         # look at all the tournaments in the year
         tournaments = response.css("div.tabheader-top").css("div.tabheader-tab").css("div.tabheader-content a")
-        matches_dict = {"blue team" : "blue_team"}
         for tournament in tournaments:
             next_page = "https://lol.fandom.com" + tournament.attrib["href"] + "/Scoreboards"
             yield scrapy.Request(next_page, callback=self.scrape_tournaments)
