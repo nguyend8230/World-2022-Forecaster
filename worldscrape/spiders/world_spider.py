@@ -2,12 +2,15 @@ import scrapy
  
 class PostsSpider(scrapy.Spider):
     name = "elise"
+    custom_settings = {"CONCURRENT_REQUESTS": 1}
     start_urls = ["https://lol.fandom.com/wiki/LCS/2022_Season"]
     regions = ["LCS","LEC,","LCK","LPL","CBLOL","LCL","LJL","LLA","LCO","PCS","TCL","VCS"]
+    
    
     def parse(self, response):
         # look at all the tournaments in the year
         tournaments = response.css("div.tabheader-top").css("div.tabheader-tab").css("div.tabheader-content a")
+        matches_dict = {"blue team" : "blue_team"}
         for tournament in tournaments:
             next_page = "https://lol.fandom.com" + tournament.attrib["href"] + "/Scoreboards"
             yield scrapy.Request(next_page, callback=self.scrape_tournaments)
