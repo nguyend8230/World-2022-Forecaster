@@ -5,12 +5,9 @@ class WorldSpider(scrapy.Spider):
     name = "elise"
     priority = 0
 
-    def __init__(self, region=None):
-        self.region = region
-    
     def start_requests(self):
         url = "https://lol.fandom.com/wiki/" + self.region + "/2022_Season"
-        yield scrapy.Request("https://lol.fandom.com/wiki/LCS/2022_Season")
+        yield scrapy.Request(url)
 
     def parse(self, response):
         tournaments = response.css("div.tabheader-top").css("div.tabheader-tab").css("div.tabheader-content a")
@@ -53,9 +50,9 @@ regions = ["LCS","LEC","LCK","LPL","CBLOL","LCL","LJL","LLA","LCO","PCS","TCL","
 for region in regions:
     print(region + ".csv")
     process = CrawlerProcess(settings = {
-        "FEED_URI": region + ".csv",
+        "FEED_URI": "regions results/" + region + ".csv",
         "FEED_FORMAT": "csv",
         "CONCURRENT_REQUESTS": 1
     })
     process.crawl(WorldSpider, region=region)
-    process.start()
+process.start()
