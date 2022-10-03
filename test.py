@@ -6,10 +6,15 @@ class WorldSpider(scrapy.Spider):
     priority = 0
 
     def start_requests(self):
-        url = "https://lol.fandom.com/wiki/" + self.region + "/2022_Season"
-        yield scrapy.Request(url)
+        yield scrapy.Request("https://lol.fandom.com/wiki/2022_Season_World_Championship")
 
     def parse(self, response):
+        for i in range(2,14):
+            next_page = "https://lol.fandom.com" + response.css("div.hlist ul")[i].css("li a").attrib["href"]
+            yield scrapy.Request(next_page, callback=self.scrape_regions, priority=self.priority)
+            self.priority-=1
+
+    def scrape_regions(self, response):
         tournaments = response.css("div.tabheader-top").css("div.tabheader-tab").css("div.tabheader-content a")
         for tournament in tournaments:
             next_page = "https://lol.fandom.com" + tournament.attrib["href"] + "/Scoreboards"
@@ -45,14 +50,10 @@ class WorldSpider(scrapy.Spider):
             matches_dict["red gold"] = red_gold
             yield matches_dict
 
-regions = ["LCS","LEC","LCK","LPL","CBLOL","LCL","LJL","LLA","LCO","PCS","TCL","VCS"]
-
-for region in regions:
-    print(region + ".csv")
-    process = CrawlerProcess(settings = {
-        "FEED_URI": "regions results/" + region + ".csv",
-        "FEED_FORMAT": "csv",
-        "CONCURRENT_REQUESTS": 1
-    })
-    process.crawl(WorldSpider, region=region)
+process = CrawlerProcess(settings = {
+    "FEED_URI": "results.csv",
+    "FEED_FORMAT": "csv",
+    "CONCURRENT_REQUESTS": 1
+})
+process.crawl(WorldSpider)
 process.start()
