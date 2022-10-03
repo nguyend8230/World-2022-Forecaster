@@ -5,7 +5,11 @@ class WorldSpider(scrapy.Spider):
     name = "elise"
     priority = 0
 
+    def __init__(self, region=None):
+        self.region = region
+    
     def start_requests(self):
+        url = "https://lol.fandom.com/wiki/" + self.region + "/2022_Season"
         yield scrapy.Request("https://lol.fandom.com/wiki/LCS/2022_Season")
 
     def parse(self, response):
@@ -16,7 +20,7 @@ class WorldSpider(scrapy.Spider):
             self.priority-=1
     
     def scrape_tournaments(self, response):
-        # print(response)
+        # print("______________________________________________",response)
         stages = response.css("div.tabheader-top")[2].css("div.tabheader-tab").css("div.tabheader-content a")
         start = str(response)[5:-1]
         yield scrapy.Request(start, callback=self.scrape_stages, dont_filter=True, priority=self.priority)
@@ -27,7 +31,7 @@ class WorldSpider(scrapy.Spider):
             self.priority-=1
        
     def scrape_stages(self, response):
-        print("                                              ",response)
+        # print("                                              ",response)
         for i in range(len(response.css("table.sb"))):
             blue_team = response.css("table.sb")[i].css("tbody tr th.sb-teamname")[0].css("span.team span.teamname").css("::text").get()
             red_team = response.css("table.sb")[i].css("tbody tr th.sb-teamname")[1].css("span.team span.teamname").css("::text").get()
@@ -35,19 +39,23 @@ class WorldSpider(scrapy.Spider):
             game_time = response.css("table.sb")[i].css("tbody tr")[2].css("th")[1].css("::text").get()
             blue_gold = response.css("table.sb")[i].css("tbody th div.sb-header div.sb-header-Gold").css("::text").get().replace("k","").replace(" ","")
             red_gold = response.css("table.sb")[i].css("tbody th.side-red div.sb-header-Gold").css("::text").get().replace("k","").replace(" ","")    
-            # # print(blue_team, " ", red_team, " ", result, " ", game_time, " ", blue_gold, " ", red_gold)
-            # matches_dict = {"blue team" : blue_team}
-            # matches_dict["red team"] = red_team
-            # matches_dict["result"] = result
-            # matches_dict["game time"] = game_time
-            # matches_dict["blue gold"] = blue_gold
-            # matches_dict["red gold"] = red_gold
-            # yield matches_dict
+            # print(blue_team, " ", red_team, " ", result, " ", game_time, " ", blue_gold, " ", red_gold)
+            matches_dict = {"blue team" : blue_team}
+            matches_dict["red team"] = red_team
+            matches_dict["result"] = result
+            matches_dict["game time"] = game_time
+            matches_dict["blue gold"] = blue_gold
+            matches_dict["red gold"] = red_gold
+            yield matches_dict
 
-process = CrawlerProcess(settings = {
-    "FEED_URI": "LCS.csv",
-    "FEED_FORMAT": "csv",
-    "CONCURRENT_REQUESTS": 1
-})
-process.crawl(WorldSpider)
-process.start()
+regions = ["LCS","LEC","LCK","LPL","CBLOL","LCL","LJL","LLA","LCO","PCS","TCL","VCS"]
+
+for region in regions:
+    print(region + ".csv")
+    process = CrawlerProcess(settings = {
+        "FEED_URI": region + ".csv",
+        "FEED_FORMAT": "csv",
+        "CONCURRENT_REQUESTS": 1
+    })
+    process.crawl(WorldSpider, region=region)
+    process.start()
