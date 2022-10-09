@@ -1,39 +1,26 @@
 import scrapy
+import os.path
 from scrapy.crawler import CrawlerProcess
 
-class WorldSpider(scrapy.Spider):
+class Spider(scrapy.Spider):
     name = "elise"
-    priority = 0
+    links = []
 
     def start_requests(self):
-        yield scrapy.Request("https://lol.fandom.com/wiki/2022_Season_World_Championship")
+        yield scrapy.Request("https://lol.fandom.com/wiki/2022_Mid-Season_Invitational/Scoreboards")
 
     def parse(self, response):
-        for i in range(2,14):
-            next_page = "https://lol.fandom.com" + response.css("div.hlist ul")[i].css("li a").attrib["href"]
-            yield scrapy.Request(next_page, callback=self.scrape_regions, priority=self.priority)
-            self.priority-=1
-
-    def scrape_regions(self, response):
-        tournaments = response.css("div.tabheader-top").css("div.tabheader-tab").css("div.tabheader-content a")
-        for tournament in tournaments:
-            next_page = "https://lol.fandom.com" + tournament.attrib["href"] + "/Scoreboards"
-            yield scrapy.Request(next_page, callback=self.scrape_tournaments, priority=self.priority)
-            self.priority-=1
-    
-    def scrape_tournaments(self, response):
         # print("______________________________________________",response)
-        stages = response.css("div.tabheader-top")[2].css("div.tabheader-tab").css("div.tabheader-content a")
         start = str(response)[5:-1]
-        yield scrapy.Request(start, callback=self.scrape_stages, dont_filter=True, priority=self.priority)
-        self.priority-=1
+        self.links.append(start)
+        stages = response.css("div.tabheader-top")[1].css("div.tabheader-tab").css("div.tabheader-content a")
         for stage in stages:
             next_page = "https://lol.fandom.com" + stage.attrib["href"]
-            yield scrapy.Request(next_page, callback=self.scrape_stages, priority=self.priority)
-            self.priority-=1
-       
+            self.links.append(next_page)
+        
+        yield scrapy.Request(self.links[0], callback=self.scrape_stages, dont_filter=True)
+
     def scrape_stages(self, response):
-        # print("                                              ",response)
         for i in range(len(response.css("table.sb"))):
             blue_team = response.css("table.sb")[i].css("tbody tr th.sb-teamname")[0].css("span.team span.teamname").css("::text").get()
             red_team = response.css("table.sb")[i].css("tbody tr th.sb-teamname")[1].css("span.team span.teamname").css("::text").get()
@@ -49,11 +36,40 @@ class WorldSpider(scrapy.Spider):
             matches_dict["blue gold"] = blue_gold
             matches_dict["red gold"] = red_gold
             yield matches_dict
+        self.links.pop(0)
+        if self.links:
+            yield scrapy.Request(self.links[0], callback=self.scrape_stages, dont_filter=True)
 
-process = CrawlerProcess(settings = {
-    "FEED_URI": "results.csv",
-    "FEED_FORMAT": "csv",
-    "CONCURRENT_REQUESTS": 1
-})
-process.crawl(WorldSpider)
-process.start()
+
+def scrape():    
+    if not os.path.exists("scraped_datas/MSI_results.csv"):
+        process = CrawlerProcess(settings = {
+            "FEED_URI": "scraped_datas/MSI_results.csv",
+            "FEED_FORMAT": "csv"
+        })
+        process.crawl(Spider)
+
+def calculate_elo():
+
+    f = open("scraped_datas/MSI_results.csv")
+    lines = f.readlines()
+
+    elo_dict = { "" : 0 }
+    k = 100
+    for line in lines:
+        chunks = line.split(",")
+        if chunks[0] not in elo_dict:
+            elo_dict[chunks[0]] = 1000
+        if chunks[1] not in elo_dict:
+            elo_dict[chunks[1]] = 1000
+        p1 = (1.0 / (1.0 + pow(10, ((elo_dict[chunks[1]] - elo_dict[chunks[0]]) / 400))))
+        p2 = (1.0 / (1.0 + pow(10, ((elo_dict[chunks[0]] - elo_dict[chunks[1]]) / 400))))
+        elo_dict[chunks[0]] = elo_dict[chunks[0]] + k*((chunks[2] == "Victory") - p1)
+        elo_dict[chunks[1]] = elo_dict[chunks[1]] + k*((chunks[2] == "Defeat") - p2)
+    f.close()
+    return elo_dict
+
+
+
+
+
