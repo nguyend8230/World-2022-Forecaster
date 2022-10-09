@@ -2,6 +2,8 @@ import scrapy
 import os.path
 from scrapy.crawler import CrawlerProcess
 
+# scrape the results from MSI in order to find the ranking between regions
+
 class Spider(scrapy.Spider):
     name = "elise"
     links = []
@@ -10,7 +12,6 @@ class Spider(scrapy.Spider):
         yield scrapy.Request("https://lol.fandom.com/wiki/2022_Mid-Season_Invitational/Scoreboards")
 
     def parse(self, response):
-        # print("______________________________________________",response)
         start = str(response)[5:-1]
         self.links.append(start)
         stages = response.css("div.tabheader-top")[1].css("div.tabheader-tab").css("div.tabheader-content a")
@@ -28,7 +29,6 @@ class Spider(scrapy.Spider):
             game_time = response.css("table.sb")[i].css("tbody tr")[2].css("th")[1].css("::text").get()
             blue_gold = response.css("table.sb")[i].css("tbody th div.sb-header div.sb-header-Gold").css("::text").get().replace("k","").replace(" ","")
             red_gold = response.css("table.sb")[i].css("tbody th.side-red div.sb-header-Gold").css("::text").get().replace("k","").replace(" ","")    
-            # print(blue_team, " ", red_team, " ", result, " ", game_time, " ", blue_gold, " ", red_gold)
             matches_dict = {"blue team" : blue_team}
             matches_dict["red team"] = red_team
             matches_dict["result"] = result
@@ -50,11 +50,15 @@ def scrape():
         process.crawl(Spider)
 
 def calculate_elo():
-
     f = open("scraped_datas/MSI_results.csv")
     lines = f.readlines()
 
     elo_dict = { "" : 0 }
+    
+    # the elo algorithm of 400 was used
+    # k is set to 100 because that's the value that got the VCS region the closest to 1000 elo (the starting elo)
+    # this is because I think that the VCS region ranks exactly in the middle for the strongest regions 
+    
     k = 100
     for line in lines:
         chunks = line.split(",")

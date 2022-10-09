@@ -2,6 +2,8 @@ import scrapy
 import os.path
 from scrapy.crawler import CrawlerProcess
 
+# calculate the elo of the teams from each region to get their unweighted elo
+
 class Spider(scrapy.Spider):
     name = "elise"
 
@@ -31,7 +33,6 @@ class Spider(scrapy.Spider):
             yield scrapy.Request(self.tournaments_links[0], callback=self.scrape_tournaments, dont_filter=True)
     
     def scrape_tournaments(self, response):
-        # print("______________________________________________",response)
         if response.status != 404:
             start = str(response)[5:-1]
             self.stages_links.append(start)
@@ -40,7 +41,6 @@ class Spider(scrapy.Spider):
                 for stage in stages:
                     next_page = "https://lol.fandom.com" + stage.attrib["href"]
                     self.stages_links.append(next_page)
-        # print(self.stages_links)
         self.tournaments_links.pop(0)
         if self.tournaments_links:
             yield scrapy.Request(self.tournaments_links[0], callback=self.scrape_tournaments, dont_filter=True)
@@ -48,7 +48,6 @@ class Spider(scrapy.Spider):
             yield scrapy.Request(self.stages_links[0], callback=self.scrape_stages, dont_filter=True)
        
     def scrape_stages(self, response):
-        # print("                                              ",response)
         for i in range(len(response.css("table.sb"))):
             blue_team = response.css("table.sb")[i].css("tbody tr th.sb-teamname")[0].css("span.team span.teamname").css("::text").get()
             red_team = response.css("table.sb")[i].css("tbody tr th.sb-teamname")[1].css("span.team span.teamname").css("::text").get()
@@ -58,7 +57,6 @@ class Spider(scrapy.Spider):
             game_time = response.css("table.sb")[i].css("tbody tr")[2].css("th")[1].css("::text").get()
             blue_gold = response.css("table.sb")[i].css("tbody th div.sb-header div.sb-header-Gold").css("::text").get().replace("k","").replace(" ","")
             red_gold = response.css("table.sb")[i].css("tbody th.side-red div.sb-header-Gold").css("::text").get().replace("k","").replace(" ","")    
-            # print(blue_team, " ", red_team, " ", result, " ", game_time, " ", blue_gold, " ", red_gold)
             matches_dict = {"blue team" : blue_team}
             matches_dict["red team"] = red_team
             matches_dict["result"] = result
@@ -87,6 +85,11 @@ def calculate_elo():
     lines = f.readlines()
 
     elo_dict = { "" : 0 }
+
+    # this uses the same elo algorithm as when calculating the teams elo at MSI
+    # however, k is 50 because I think that the teams' strength relative to the region 
+    # is only half as impactful as the region that it's played on in the calculation of the team's true power
+
     k = 50
     for line in lines:
         chunks = line.split(",")

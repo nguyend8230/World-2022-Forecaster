@@ -6,7 +6,10 @@ import regional_elo_calculator as regional_ec
 import regions_weights_calculator as regions_wc
 import MSI_elo_calculator as MSI_ec
 
-class WorldSpider(scrapy.Spider):
+# find the regions of the team at world
+# use the elo that the team has domestically and multiply by the weight of the region to find that team's weighted elo
+
+class Spider(scrapy.Spider):
     name = "elise"
 
     def start_requests(self):
@@ -46,7 +49,7 @@ def scrape():
             "FEED_URI": "scraped_datas/world_teams.csv",
             "FEED_FORMAT": "csv"
         })
-        process.crawl(WorldSpider)
+        process.crawl(Spider)
 
 def calculate_elo():
 

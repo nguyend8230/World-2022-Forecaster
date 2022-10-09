@@ -4,6 +4,10 @@ from scrapy.crawler import CrawlerProcess
 
 import MSI_elo_calculator as ec
 
+# the region's weight is calculated using the team that represented the region at MSI
+# that team's elo at MSI will be divided by 1000 (the starting elo) to find the region's weight
+# the region's weight will be multiplied to the elo of the teams from that region to find the weighted elo of those teams 
+
 class Spider(scrapy.Spider):
     name = "elise"
     
@@ -40,8 +44,5 @@ def calculate_weights():
             chunks = line.split(",") 
             weights_dict[chunks[1]] = elo_dict[chunks[0]]/1000
 
-    # temp = weights_dict
-    # temp = sorted(temp.items(), key=lambda item: item[1])
-    # print(temp)
     return weights_dict
 
